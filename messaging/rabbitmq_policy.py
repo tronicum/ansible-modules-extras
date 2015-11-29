@@ -105,7 +105,7 @@ class RabbitMqPolicy(object):
         return False
 
     def set(self):
-        import json
+	import json
         args = ['set_policy']
         args.append(self._name)
         args.append(self._pattern)

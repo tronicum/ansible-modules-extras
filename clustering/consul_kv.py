@@ -124,9 +124,22 @@ import sys
 
 try:
     import json
+    # Detect the python-json library which is incompatible
+    # Look for simplejson if that's the case
+    try:
+        if not isinstance(json.loads, types.FunctionType) or not isinstance(json.dumps, types.FunctionType):
+            raise ImportError
+    except AttributeError:
+        raise ImportError
 except ImportError:
-    import simplejson as json
-
+    try:
+        import simplejson as json
+    except ImportError:
+        print('{"msg": "Error: ansible requires the stdlib json or simplejson module, neither was found!", "failed": true}')
+        sys.exit(1)
+    except SyntaxError:
+        print('{"msg": "SyntaxError: probably due to installed simplejson being for a different python version", "failed": true}')
+        sys.exit(1)
 try:
     import consul
     from requests.exceptions import ConnectionError

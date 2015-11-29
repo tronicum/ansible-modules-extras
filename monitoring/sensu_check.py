@@ -179,10 +179,7 @@ def sensu_check(module, path, name, state='present', backup=False):
     changed = False
     reasons = []
 
-    try:
-        import json
-    except ImportError:
-        import simplejson as json
+    import json
 
     stream = None
     try:
