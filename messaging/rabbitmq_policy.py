@@ -105,7 +105,24 @@ class RabbitMqPolicy(object):
         return False
 
     def set(self):
-        import json
+        try:
+            import json
+            # Detect the python-json library which is incompatible
+            # Look for simplejson if that's the case
+            try:
+                if not isinstance(json.loads, types.FunctionType) or not isinstance(json.dumps, types.FunctionType):
+                    raise ImportError
+                except AttributeError:
+                    raise ImportError
+                except ImportError:
+            try:
+                import simplejson as json
+            except ImportError:
+                print('{"msg": "Error: ansible requires the stdlib json or simplejson module, neither was found!", "failed": true}')
+                sys.exit(1)
+            except SyntaxError:
+                print('{"msg": "SyntaxError: probably due to installed simplejson being for a different python version", "failed": true}')
+                sys.exit(1)
         args = ['set_policy']
         args.append(self._name)
         args.append(self._pattern)
