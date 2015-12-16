@@ -25,7 +25,7 @@ description:
     - Creates or terminates ecs clusters.
 version_added: "2.0"
 author: Mark Chance(@Java1Guy)
-requirements: [ json, time, boto, boto3 ]
+requirements: [ boto, boto3 ]
 options:
     state:
         description:
@@ -100,26 +100,9 @@ status:
     returned: ACTIVE
     type: string
 '''
+import time
+
 try:
-    import json
-    # Detect the python-json library which is incompatible
-    # Look for simplejson if that's the case
-    try:
-        if not isinstance(json.loads, types.FunctionType) or not isinstance(json.dumps, types.FunctionType):
-            raise ImportError
-    except AttributeError:
-        raise ImportError
-except ImportError:
-    try:
-        import simplejson as json
-    except ImportError:
-        print('{"msg": "Error: ansible requires the stdlib json or simplejson module, neither was found!", "failed": true}')
-        sys.exit(1)
-    except SyntaxError:
-        print('{"msg": "SyntaxError: probably due to installed simplejson being for a different python version", "failed": true}')
-        sys.exit(1)
-try:
-    time
     import boto
     HAS_BOTO = True
 except ImportError:
@@ -165,7 +148,7 @@ class EcsClusterManager:
             c = self.find_in_array(response['clusters'], cluster_name)
             if c:
                 return c
-        raise StandardError("Unknown problem describing cluster %s." % cluster_name)
+        raise Exception("Unknown problem describing cluster %s." % cluster_name)
 
     def create_cluster(self, clusterName = 'default'):
         response = self.ecs.create_cluster(clusterName=clusterName)
@@ -188,12 +171,10 @@ def main():
     module = AnsibleModule(argument_spec=argument_spec, supports_check_mode=True, required_together=required_together)
 
     if not HAS_BOTO:
-      module.fail_json(msg='boto is required.')
+        module.fail_json(msg='boto is required.')
 
     if not HAS_BOTO3:
-      module.fail_json(msg='boto3 is required.')
-
-    cluster_name = module.params['name']
+        module.fail_json(msg='boto3 is required.')
 
     cluster_mgr = EcsClusterManager(module)
     try:

@@ -42,6 +42,11 @@ import os
 import pipes
 import stat
 
+try:
+    import json
+except ImportError:
+    import simplejson as json
+
 DOCUMENTATION = '''
 ---
 module: puppet
@@ -61,13 +66,15 @@ options:
     required: false
     default: None
   manifest:
-    desciption:
+    description:
       - Path to the manifest file to run puppet apply on.
     required: false
     default: None
   show_diff:
     description:
-      - Should puppet return diffs of changes applied. Defaults to off to avoid leaking secret changes by default.
+      - >
+       Should puppet return diffs of changes applied. Defaults to off to
+       avoid leaking secret changes by default.
     required: false
     default: no
     choices: [ "yes", "no" ]
@@ -150,6 +157,9 @@ def main():
         module.fail_json(
             msg="Could not find puppet. Please ensure it is installed.")
 
+    global TIMEOUT_CMD
+    TIMEOUT_CMD = module.get_bin_path("timeout", False)
+
     if p['manifest']:
         if not os.path.exists(p['manifest']):
             module.fail_json(
@@ -162,7 +172,8 @@ def main():
             PUPPET_CMD + " config print agent_disabled_lockfile")
         if os.path.exists(stdout.strip()):
             module.fail_json(
-                msg="Puppet agent is administratively disabled.", disabled=True)
+                msg="Puppet agent is administratively disabled.",
+                disabled=True)
         elif rc != 0:
             module.fail_json(
                 msg="Puppet agent state could not be determined.")
@@ -173,19 +184,24 @@ def main():
             module.params['facter_basename'],
             module.params['facts'])
 
-    base_cmd = "timeout -s 9 %(timeout)s %(puppet_cmd)s" % dict(
-        timeout=pipes.quote(p['timeout']), puppet_cmd=PUPPET_CMD)
+    if TIMEOUT_CMD:
+        base_cmd = "%(timeout_cmd)s -s 9 %(timeout)s %(puppet_cmd)s" % dict(
+            timeout_cmd=TIMEOUT_CMD,
+            timeout=pipes.quote(p['timeout']),
+            puppet_cmd=PUPPET_CMD)
+    else:
+        base_cmd = PUPPET_CMD
 
     if not p['manifest']:
         cmd = ("%(base_cmd)s agent --onetime"
-               " --ignorecache --no-daemonize --no-usecacheonfailure --no-splay"
-               " --detailed-exitcodes --verbose") % dict(
+               " --ignorecache --no-daemonize --no-usecacheonfailure"
+               " --no-splay --detailed-exitcodes --verbose") % dict(
                    base_cmd=base_cmd,
                    )
         if p['puppetmaster']:
             cmd += " --server %s" % pipes.quote(p['puppetmaster'])
         if p['show_diff']:
-            cmd += " --show_diff"
+            cmd += " --show-diff"
         if p['environment']:
             cmd += " --environment '%s'" % p['environment']
         if module.check_mode:
